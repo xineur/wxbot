@@ -5,3 +5,7 @@
 data
 docker/wxbot.tar
 tests
+vendor
+test
+wxbot
+wxbot.exe
