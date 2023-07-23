@@ -1,30 +1,33 @@
 # WxBot
 
-* [What's this?](#whats-this)
-    * [已对接框架](#已对接框架)
-    * [已对接API](#已对接api)
-    * [已有插件](#已有插件)
-    * [指令大全](#指令大全)
-* [How to use?](#how-to-use)
-    * [本地运行](#本地运行)
-    * [Releases包](#releases包)
-    * [Docker运行](#docker运行)
-    * [Actions编译](#actions编译)
-* [How to develop?](#how-to-develop)
-    * [制作插件或接入其他框架](#制作插件或接入其他框架)
-    * [参考案例](#参考案例)
-    * [调试-环境变量](#调试-环境变量)
-    * [提交Pr注意项](#提交pr注意项)
-* [Feature](#feature)
-* [Thanks](#thanks)
-* [Support](#support)
-* [License](#license)
+- [WxBot](#wxbot)
+	- [What's this?](#whats-this)
+		- [已对接框架](#已对接框架)
+		- [已对接API](#已对接api)
+		- [已有插件](#已有插件)
+		- [指令大全](#指令大全)
+	- [How to use?](#how-to-use)
+		- [本地运行](#本地运行)
+		- [Releases包](#releases包)
+		- [Docker运行](#docker运行)
+		- [Actions编译](#actions编译)
+	- [How to develop?](#how-to-develop)
+		- [制作插件或接入其他框架](#制作插件或接入其他框架)
+		- [参考案例](#参考案例)
+		- [调试-环境变量](#调试-环境变量)
+		- [提交Pr注意项](#提交pr注意项)
+	- [Feature](#feature)
+	- [打个广告](#打个广告)
+	- [Thanks](#thanks)
+		- [JetBrains 开源证书支持](#jetbrains-开源证书支持)
+		- [开源项目](#开源项目)
+	- [License](#license)
 
 ## What's this?
 
 一个还算有意思的wechat robot项目，理想将其设计成一个多功能的机器人助手 😈
 
-* 🤨框架可无侵入扩展，现已接入`Dean DLL`、~~`千寻框架`~~、`vlw框架`，请参考`framework`目录
+* 🤨框架可无侵入扩展，现已接入`Dean DLL`、~~`千寻框架`~~、`vlw框架`、`Super框架`，请参考`framework`目录
 * 🤨功能可无侵入扩展，现已集成`plugins`目录下的功能，请参考`plugins`目录
 * 🤨新手视频教程 📺
     * BiliBili：[https://www.bilibili.com/video/BV1Q84y1c7iF](https://www.bilibili.com/video/BV1Q84y1c7iF)
