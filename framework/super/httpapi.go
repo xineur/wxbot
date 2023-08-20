@@ -91,7 +91,7 @@ func getDataBySocket(socketConn *websocket.Conn, params interface{}, handleFunc 
 		if err != nil {
 			return false, fmt.Errorf("读取消息出错: %s", err.Error())
 		}
-
+		log.Debug("接收到消息: %s", string(message))
 		if msgType == websocket.TextMessage {
 
 			messageStr := string(message)
@@ -115,32 +115,38 @@ func getDataBySocket(socketConn *websocket.Conn, params interface{}, handleFunc 
 	}
 }
 
+// TODO)) Socket 方法已废弃
 func (f *Framework) GetRobotInfo() (*robot.User, error) {
-	params := SendFormat{
-		ID:      getId(),
-		Type:    PERSONAL_INFO,
-		Content: "op:personal info",
-		WxID:    "ROOT",
-	}
+
+	// params := SendFormat{
+	// 	ID:      getId(),
+	// 	Type:    PERSONAL_INFO,
+	// 	Content: "personal info",
+	// 	WxID:    "ROOT",
+	// }
 
 	var contentInfo ContentInfo
+	contentInfo.WxID = f.BotWxId
+	contentInfo.WxCode = f.BotWxId
+	contentInfo.WxName = ""
 
-	_, err := getDataBySocket(f.SocketConn, params, func(resp *RespData) (bool, error) {
-		if resp.Type != PERSONAL_INFO || resp.Status != "SUCCSESSED" {
-			return false, nil
-		}
+	// _, err := getDataBySocket(f.SocketConn, params, func(resp *RespData) (bool, error) {
+	// 	log.Debug("获取当前用户信息: %s", resp.Content)
+	// 	if resp.Type != PERSONAL_INFO || resp.Status != "SUCCSESSED" {
+	// 		return false, nil
+	// 	}
 
-		contentInfo.WxCode = gjson.Get(resp.Content, "wx_code").String()
-		contentInfo.WxID = gjson.Get(resp.Content, "wx_id").String()
-		contentInfo.WxName = gjson.Get(resp.Content, "wx_name").String()
+	// 	contentInfo.WxCode = gjson.Get(resp.Content, "wx_code").String()
+	// 	contentInfo.WxID = gjson.Get(resp.Content, "wx_id").String()
+	// 	contentInfo.WxName = gjson.Get(resp.Content, "wx_name").String()
 
-		// 进行处理逻辑
-		return true, nil
-	})
+	// 	// 进行处理逻辑
+	// 	return true, nil
+	// })
 
-	if err != nil {
-		log.Fatal("接收获取当前用户信息失败: %s", err)
-	}
+	// if err != nil {
+	// 	log.Fatal("接收获取当前用户信息失败: %s", err)
+	// }
 
 	return &robot.User{
 		WxId:         contentInfo.WxID,
@@ -348,59 +354,53 @@ func (f *Framework) GetObjectInfo(wxId string) (*robot.User, error) {
 }
 
 func (f *Framework) GetFriends(isRefresh bool) ([]*robot.User, error) {
-	params := SendFormat{
-		ID:      getId(),
-		Type:    USER_LIST,
-		Content: "user list",
-		WxID:    "ROOT",
+	apiUrl := fmt.Sprintf("%s/api/getcontactlist", f.ApiUrl)
+
+	params := map[string]interface{}{
+		"para": map[string]interface{}{
+			"id":       getId(),
+			"type":     USER_LIST,
+			"wxid":     "null",
+			"roomid":   "null",
+			"content":  "null",
+			"ext":      "null",
+			"nickname": "null",
+		},
+	}
+
+	var dataResp FriendsListResp
+	if err := NewRequest().Get(apiUrl).SetBody(params).SetHeader("Content-Type", "application/json").SetSuccessResult(&dataResp).Do().Err; err != nil {
+		log.Errorf("[Super] GetFriends error: %v", err.Error())
+		return nil, err
 	}
 
 	var friendsInfoList []*robot.User
-
-	_, err := getDataBySocket(f.SocketConn, params, func(resp *RespData) (bool, error) {
-		if resp.Type != USER_LIST {
-			return false, nil
+	for _, res := range dataResp.Content {
+		if strings.Contains(res.WxId, "@chatroom") || strings.Contains(res.WxId, "gh_") {
+			continue
 		}
-		respContent := gjson.Parse(resp.Content).Array()
-		for _, user := range respContent {
-			var userInfo FriendInfo
-			userInfo.WxID = user.Get("wxid").String()
-			userInfo.WxCode = user.Get("wxcode").String()
-			userInfo.HeadImg = user.Get("headimg").String()
-			userInfo.Name = user.Get("name").String()
-			userInfo.Node = user.Get("node").Int()
-			userInfo.Remarks = user.Get("remarks").String()
-			if strings.Contains(userInfo.WxID, "@chatroom") || strings.Contains(userInfo.WxID, "gh_") {
-				continue
-			}
-			friendsInfoList = append(friendsInfoList, &robot.User{
-				WxId:                    userInfo.WxID,
-				WxNum:                   userInfo.WxCode,
-				Nick:                    userInfo.Name,
-				Remark:                  userInfo.Remarks,
-				NickBrief:               userInfo.Name,
-				NickWhole:               userInfo.Name,
-				RemarkBrief:             "",
-				RemarkWhole:             "",
-				EnBrief:                 "",
-				EnWhole:                 "",
-				V3:                      "",
-				Sign:                    "",
-				Country:                 "",
-				Province:                "",
-				City:                    "",
-				MomentsBackgroundImgUrl: "",
-				AvatarMinUrl:            userInfo.HeadImg,
-				AvatarMaxUrl:            userInfo.HeadImg,
-				Sex:                     "",
-				MemberNum:               0,
-			})
-		}
-		return true, nil
-	})
-
-	if err != nil {
-		log.Fatal("获取好友列表失败: %s", err)
+		friendsInfoList = append(friendsInfoList, &robot.User{
+			WxId:                    res.WxId,
+			WxNum:                   res.WxCode,
+			Nick:                    res.Name,
+			Remark:                  res.Remarks,
+			NickBrief:               res.Name,
+			NickWhole:               res.Name,
+			RemarkBrief:             "",
+			RemarkWhole:             "",
+			EnBrief:                 "",
+			EnWhole:                 "",
+			V3:                      "",
+			Sign:                    "",
+			Country:                 "",
+			Province:                "",
+			City:                    "",
+			MomentsBackgroundImgUrl: "",
+			AvatarMinUrl:            res.HeadImg,
+			AvatarMaxUrl:            res.HeadImg,
+			Sex:                     "",
+			MemberNum:               0,
+		})
 	}
 
 	// 过滤系统用户
@@ -416,55 +416,56 @@ func (f *Framework) GetFriends(isRefresh bool) ([]*robot.User, error) {
 }
 
 func (f *Framework) GetGroups(isRefresh bool) ([]*robot.User, error) {
-	params := SendFormat{
-		ID:      getId(),
-		Type:    USER_LIST,
-		Content: "user list",
-		WxID:    "ROOT",
+	apiUrl := fmt.Sprintf("%s/api/getcontactlist", f.ApiUrl)
+
+	params := map[string]interface{}{
+		"para": map[string]interface{}{
+			"id":       getId(),
+			"type":     USER_LIST,
+			"wxid":     "null",
+			"roomid":   "null",
+			"content":  "null",
+			"ext":      "null",
+			"nickname": "null",
+		},
+	}
+
+	var dataResp FriendsListResp
+	if err := NewRequest().Get(apiUrl).SetBody(params).SetHeader("Content-Type", "application/json").SetSuccessResult(&dataResp).Do().Err; err != nil {
+		log.Errorf("[Super] GetGroups error: %v", err.Error())
+		return nil, err
 	}
 
 	var groupInfoList []*robot.User
+	for _, res := range dataResp.Content {
+		if strings.Contains(res.WxId, "@chatroom") {
 
-	_, err := getDataBySocket(f.SocketConn, params, func(resp *RespData) (bool, error) {
-		if resp.Type != USER_LIST {
-			return false, nil
+			groupInfoList = append(groupInfoList, &robot.User{
+				WxId:                    res.WxId,
+				WxNum:                   res.WxCode,
+				Nick:                    res.Name,
+				Remark:                  res.Remarks,
+				NickBrief:               res.Name,
+				NickWhole:               res.Name,
+				RemarkBrief:             "",
+				RemarkWhole:             "",
+				EnBrief:                 "",
+				EnWhole:                 "",
+				V3:                      "",
+				Sign:                    "",
+				Country:                 "",
+				Province:                "",
+				City:                    "",
+				MomentsBackgroundImgUrl: "",
+				AvatarMinUrl:            res.HeadImg,
+				AvatarMaxUrl:            res.HeadImg,
+				Sex:                     "",
+				MemberNum:               0,
+			})
+
 		}
-
-		respContent := gjson.Parse(resp.Content).Array()
-		for _, group := range respContent {
-			var groupInfo FriendInfo
-			groupInfo.WxID = group.Get("wxid").String()
-			groupInfo.WxCode = group.Get("wxcode").String()
-			groupInfo.HeadImg = group.Get("headimg").String()
-			groupInfo.Name = group.Get("name").String()
-			groupInfo.Node = group.Get("node").Int()
-			groupInfo.Remarks = group.Get("remarks").String()
-
-			if strings.Contains(groupInfo.WxID, "@chatroom") {
-				groupInfoList = append(groupInfoList, &robot.User{
-					WxId:         groupInfo.WxID,
-					WxNum:        groupInfo.WxCode,
-					Nick:         groupInfo.Name,
-					Remark:       groupInfo.Remarks,
-					NickBrief:    groupInfo.Name,
-					NickWhole:    groupInfo.Name,
-					RemarkBrief:  "",
-					RemarkWhole:  "",
-					EnBrief:      "",
-					EnWhole:      "",
-					MemberNum:    0,
-					AvatarMinUrl: groupInfo.HeadImg,
-					AvatarMaxUrl: groupInfo.HeadImg,
-				})
-
-			}
-		}
-		return true, nil
-	})
-
-	if err != nil {
-		log.Fatal("获取群列表失败: %s", err)
 	}
+
 	return groupInfoList, nil
 }
 
@@ -494,59 +495,53 @@ func (f *Framework) GetGroupMembers(groupWxId string, isRefresh bool) ([]*robot.
 }
 
 func (f *Framework) GetMPs(isRefresh bool) ([]*robot.User, error) {
-	params := SendFormat{
-		ID:      getId(),
-		Type:    USER_LIST,
-		Content: "user list",
-		WxID:    "ROOT",
+	apiUrl := fmt.Sprintf("%s/api/getcontactlist", f.ApiUrl)
+
+	params := map[string]interface{}{
+		"para": map[string]interface{}{
+			"id":       getId(),
+			"type":     USER_LIST,
+			"wxid":     "null",
+			"roomid":   "null",
+			"content":  "null",
+			"ext":      "null",
+			"nickname": "null",
+		},
+	}
+
+	var dataResp FriendsListResp
+	if err := NewRequest().Get(apiUrl).SetBody(params).SetHeader("Content-Type", "application/json").SetSuccessResult(&dataResp).Do().Err; err != nil {
+		log.Errorf("[Super] GetMPs error: %v", err.Error())
+		return nil, err
 	}
 
 	var subscriptionInfoList []*robot.User
+	for _, res := range dataResp.Content {
+		if strings.Contains(res.WxId, "gh_") {
+			subscriptionInfoList = append(subscriptionInfoList, &robot.User{
+				WxId:                    res.WxId,
+				WxNum:                   res.WxCode,
+				Nick:                    res.Name,
+				Remark:                  res.Remarks,
+				NickBrief:               res.Name,
+				NickWhole:               res.Name,
+				RemarkBrief:             "",
+				RemarkWhole:             "",
+				EnBrief:                 "",
+				EnWhole:                 "",
+				V3:                      "",
+				Sign:                    "",
+				Country:                 "",
+				Province:                "",
+				City:                    "",
+				MomentsBackgroundImgUrl: "",
+				AvatarMinUrl:            res.HeadImg,
+				AvatarMaxUrl:            res.HeadImg,
+				Sex:                     "",
+				MemberNum:               0,
+			})
 
-	_, err := getDataBySocket(f.SocketConn, params, func(resp *RespData) (bool, error) {
-		if resp.Type != USER_LIST {
-			return false, nil
 		}
-
-		respContent := gjson.Parse(resp.Content).Array()
-		for _, subscription := range respContent {
-			var subscriptionInfo FriendInfo
-			subscriptionInfo.WxID = subscription.Get("wxid").String()
-			subscriptionInfo.WxCode = subscription.Get("wxcode").String()
-			subscriptionInfo.HeadImg = subscription.Get("headimg").String()
-			subscriptionInfo.Name = subscription.Get("name").String()
-			subscriptionInfo.Node = subscription.Get("node").Int()
-			subscriptionInfo.Remarks = subscription.Get("remarks").String()
-
-			if strings.Contains(subscriptionInfo.WxID, "@chatroom") {
-				subscriptionInfoList = append(subscriptionInfoList, &robot.User{
-					WxId:                    subscriptionInfo.WxID,
-					WxNum:                   subscriptionInfo.WxCode,
-					Nick:                    subscriptionInfo.Name,
-					Remark:                  subscriptionInfo.Remarks,
-					NickBrief:               subscriptionInfo.Name,
-					NickWhole:               subscriptionInfo.Name,
-					RemarkBrief:             "",
-					RemarkWhole:             "",
-					EnBrief:                 "",
-					EnWhole:                 "",
-					V3:                      "",
-					Sign:                    "",
-					Country:                 "",
-					Province:                "",
-					City:                    "",
-					MomentsBackgroundImgUrl: "",
-					AvatarMinUrl:            subscriptionInfo.HeadImg,
-					AvatarMaxUrl:            subscriptionInfo.HeadImg,
-				})
-
-			}
-		}
-		return true, nil
-	})
-
-	if err != nil {
-		log.Fatal("获取公总号列表失败: %s", err)
 	}
 
 	return subscriptionInfoList, nil

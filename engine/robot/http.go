@@ -31,6 +31,7 @@ func cors() gin.HandlerFunc {
 }
 
 func runServer(c *Config) {
+	log.Debug("[robot] 启动WxBot回调服务")
 	r := gin.New()
 	r.Use(cors())
 	r.Use(static.Serve("/", static.EmbedFolder(web.Web, "dist")))

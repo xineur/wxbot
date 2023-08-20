@@ -11,9 +11,10 @@ import (
 )
 
 type MessageResp struct {
-	Type    int    `json:"type"`
-	Status  string `json:"status"`
-	Content string `json:"content"`
+	Type    int         `json:"type"`
+	Status  *string     `json:"status,omitempty"`
+	Id      *string     `json:"id,omitempty"`
+	Content interface{} `json:"content"`
 }
 
 func NewRequest() *req.Client {
@@ -41,9 +42,11 @@ func NewRequest() *req.Client {
 				resp.Err = fmt.Errorf("解析Response失败, error: %s", err.Error())
 				return nil
 			}
-			if dataResp.Status == "FAILED" {
-				resp.Err = fmt.Errorf(resp.String())
-				return nil
+			if dataResp.Status != nil {
+				if *dataResp.Status == "FAILED" {
+					resp.Err = fmt.Errorf(resp.String())
+					return nil
+				}
 			}
 			return nil
 		})
